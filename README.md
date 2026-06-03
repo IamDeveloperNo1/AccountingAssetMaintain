@@ -1,45 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Accounting Asset Maintain
 
-## Getting Started
+Enterprise-style Next.js application for accounting asset maintenance, following the architecture defined in `Skill.md`.
 
-First, run the development server:
+## Architecture
+
+```
+src/
+├── app/              # Routes, API handlers (thin layer)
+├── modules/          # Feature domains (import-job, auth)
+├── infrastructure/   # Database, Redis, logging
+├── shared/           # Reusable UI, HTTP client, errors
+├── configs/          # Environment validation (Zod)
+├── providers/
+├── utils/
+└── hooks/
+```
+
+**Flow:** UI → API Route → Validation → Service → Repository / Client → Database / External API
+
+## Features
+
+- CSV / XLSX asset import with header validation
+- Batch row persistence and progress tracking
+- BullMQ background processing with retries and exponential backoff
+- Structured JSON logging
+- External API client with timeout, retry, and error normalization
+
+## Prerequisites
+
+- Node.js 20+
+- Redis (for queue processing)
+
+## Setup
+
+```bash
+cp .env.example .env
+npm install
+npm run db:push
+```
+
+Start the web app and worker in separate terminals:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run worker
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) and go to **Import Jobs** (`/import-jobs`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Sample file
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`public/samples/asset-import-sample.csv`
 
-## Learn More
+Required columns: `assetCode`, `assetName`, `category`, `acquisitionDate`, `cost`, `location`, `department`
 
-To learn more about Next.js, take a look at the following resources:
+## Troubleshooting (Turbopack panic / 404)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+If you see **FATAL: An unexpected Turbopack error** or `app_dir must be a directory`:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Stop every running `npm run dev` terminal (Ctrl+C).
+2. Clear the cache: `npm run clean`
+3. Start again: `npm run dev` (uses **webpack**, not Turbopack).
 
-## Deploy on Vercel
+Use `npm run dev:turbo` only if you explicitly want Turbopack.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Dev server (webpack) |
+| `npm run clean` | Delete `.next` cache |
+| `npm run dev:turbo` | Dev server with Turbopack |
+| `npm run build` | Production build |
+| `npm run worker` | BullMQ import processor |
+| `npm run db:push` | Sync Prisma schema to SQLite |
+| `npm run test` | Unit tests (Zod schemas) |
 
+## Environment
 
-git add .
-
-git commit -m "feat: add nextjs frontend"
-
-git push origin main
-
-git push personal main
+See `.env.example`. Set `EXTERNAL_API_BASE_URL` when you want rows posted to an external asset API. Without it, rows validate locally and complete without HTTP calls.

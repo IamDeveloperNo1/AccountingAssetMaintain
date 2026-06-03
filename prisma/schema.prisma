@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum ImportJobStatus {
+  PENDING
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+enum ImportRowStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  RETRYING
+}
+
+model ImportJob {
+  id              String          @id @default(cuid())
+  fileName        String
+  fileType        String
+  status          ImportJobStatus @default(PENDING)
+  totalRows       Int             @default(0)
+  processedRows   Int             @default(0)
+  successRows     Int             @default(0)
+  failedRows      Int             @default(0)
+  progressPercent Float           @default(0)
+  errorMessage    String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  rows            ImportRow[]
+}
+
+model ImportRow {
+  id            String          @id @default(cuid())
+  jobId         String
+  rowNumber     Int
+  rawData       String
+  status        ImportRowStatus @default(PENDING)
+  failureReason String?
+  retryCount    Int             @default(0)
+  durationMs    Int?
+  processedAt   DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  job           ImportJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([status])
+}
